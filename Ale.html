@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ale</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    overflow: hidden;
+    height: 100vh;
+    background: #fff0f5;
+    font-family: "Great Vibes", cursive;
+}
+
+canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+#mensaje {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    background: linear-gradient(
+        180deg,
+        #ff9ebd 0%,
+        #f45b83 45%,
+        #d91e4f 100%
+    );
+
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+
+    font-family: "Great Vibes", cursive;
+    font-size: clamp(55px, 9vw, 120px);
+    font-weight: normal;
+    text-align: center;
+    white-space: nowrap;
+    text-shadow: none;
+    opacity: 0;
+    transition: opacity 2s ease;
+    z-index: 10;
+    pointer-events: none;
+}
+
+#mensaje.visible {
+    opacity: 1;
+}
+</style>
+</head>
+
+<body>
+<div id="kitty-container"></div>
+<canvas id="canvas"></canvas>
+
+<div id="mensaje">
+    Te quiero musho Alejita
+</div>
+<script src="kitty.js"></script>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let W;
+let H;
+
+function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+}
+
+window.addEventListener("resize", resize);
+resize();
+
+let particles = [];
+
+const cantidad = 2600;
+
+for (let i = 0; i < cantidad; i++) {
+    particles.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        startX: Math.random() * W,
+        startY: Math.random() * H,
+        size: Math.random() * 2.3 + 0.7,
+        delay: Math.random() * 1500,
+        thickness: (Math.random() - 0.5) * 18
+    });
+}
+
+let fallingHearts = [];
+
+const cantidadCorazones = 80;
+
+function crearCorazon() {
+    return {
+        x: Math.random() * W,
+        y: Math.random() * H - H,
+        size: Math.random() * 8 + 5,
+        speed: Math.random() * 1.5 + 0.6,
+        drift: Math.random() * 0.8 - 0.4,
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 0.02,
+        opacity: Math.random() * 0.45 + 0.25
+    };
+}
+
+for (let i = 0; i < cantidadCorazones; i++) {
+    fallingHearts.push(crearCorazon());
+}
+
+function drawSmallHeart(x, y, size, rotation, opacity) {
+    ctx.save();
+
+    ctx.translate(x, y);
+    ctx.rotate(rotation);
+    ctx.globalAlpha = opacity;
+
+    ctx.beginPath();
+
+    ctx.moveTo(0, size * 0.35);
+
+    ctx.bezierCurveTo(
+        -size * 1.1,
+        -size * 0.35,
+        -size * 0.55,
+        -size,
+        0,
+        -size * 0.35
+    );
+
+    ctx.bezierCurveTo(
+        size * 0.55,
+        -size,
+        size * 1.1,
+        -size * 0.35,
+        0,
+        size * 0.35
+    );
+
+    ctx.closePath();
+
+    ctx.fillStyle = "#f28bad";
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function heart(t, scale) {
+    const x = 16 * Math.pow(Math.sin(t), 3);
+
+    const y =
+        13 * Math.cos(t)
+        - 5 * Math.cos(2 * t)
+        - 2 * Math.cos(3 * t)
+        - Math.cos(4 * t);
+
+    return {
+        x: W / 2 + x * scale,
+        y: H / 2 - y * scale
+    };
+}
+
+let startTime = performance.now();
+
+function animate(time) {
+    ctx.clearRect(0, 0, W, H);
+
+    const elapsed = time - startTime;
+    const scale = Math.min(W, H) / 38;
+
+    particles.forEach((p, i) => {
+        const t = (i / cantidad) * Math.PI * 2;
+        const target = heart(t, scale);
+
+        let progress = Math.min(
+            1,
+            Math.max(
+                0,
+                (elapsed - p.delay) / 2500
+            )
+        );
+
+        progress = progress * progress * (3 - 2 * progress);
+
+        const angle = Math.atan2(
+            target.y - H / 2,
+            target.x - W / 2
+        );
+
+        const offsetX = Math.cos(angle) * p.thickness;
+        const offsetY = Math.sin(angle) * p.thickness;
+
+        const finalX = target.x + offsetX;
+        const finalY = target.y + offsetY;
+
+        p.x =
+            p.startX +
+            (finalX - p.startX) * progress;
+
+        p.y =
+            p.startY +
+            (finalY - p.startY) * progress;
+
+        ctx.beginPath();
+
+        ctx.fillStyle = "#f06f9d";
+
+        ctx.arc(
+            p.x,
+            p.y,
+            p.size,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+    });
+
+    fallingHearts.forEach((heartParticle) => {
+        heartParticle.y += heartParticle.speed;
+        heartParticle.x += heartParticle.drift;
+        heartParticle.rotation += heartParticle.rotationSpeed;
+
+        drawSmallHeart(
+            heartParticle.x,
+            heartParticle.y,
+            heartParticle.size,
+            heartParticle.rotation,
+            heartParticle.opacity
+        );
+
+        if (heartParticle.y > H + 30) {
+            heartParticle.y = -30;
+            heartParticle.x = Math.random() * W;
+            heartParticle.size = Math.random() * 8 + 5;
+            heartParticle.speed = Math.random() * 1.5 + 0.6;
+            heartParticle.opacity = Math.random() * 0.45 + 0.25;
+        }
+
+        if (heartParticle.x < -30) {
+            heartParticle.x = W + 30;
+        }
+
+        if (heartParticle.x > W + 30) {
+            heartParticle.x = -30;
+        }
+    });
+
+    requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+
+setTimeout(() => {
+    document
+        .getElementById("mensaje")
+        .classList.add("visible");
+}, 4500);
+</script>
+
+</body>
+</html>
